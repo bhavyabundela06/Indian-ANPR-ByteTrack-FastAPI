@@ -9,16 +9,23 @@ Coupled with a FastAPI backend and a Streamlit Security Operations Center (SOC) 
 ## ⚡ Key Features
 * **Real-Time Tracking:** Utilizes YOLOv8 and ByteTrack to lock onto cars, bikes, buses, and trucks across multiple frames without losing the subject.
 * **Domain-Aware OCR:** Implements custom regex and character-mapping rules specific to the Indian format (`SS DD L NNNN`). It automatically corrects common AI hallucinations (e.g., confusing `O` with `0` in a digit-only slot).
-* **Decoupled Architecture:** The display loop never blocks on heavy OCR processing, allowing the video stream to maintain high FPS. 
+* **Decoupled Architecture:** The display loop never blocks on heavy OCR processing, allowing the video stream to maintain high FPS.
 * **Full-Stack Integration:** Includes a FastAPI backend router and a lightweight SQLite database to log detections, confidence scores, and timestamps.
 * **Command Matrix Dashboard:** A sleek, live-updating Streamlit SOC interface to monitor traffic telemetry and view evidence crops in real-time.
 
-## 🗂️ System Architecture
-* `anpr_colab.py`: The core computer vision pipeline (YOLOv8 + PaddleOCR + ByteTrack).
-* `plate_rules.py`: Regex and algorithmic correction for Indian license plate formats.
-* `main.py` / `routes.py`: The FastAPI application and endpoint routing.
-* `db.py` / `models.py` / `crud.py`: SQLite database engine and transaction logic.
-* `dashboard.py`: The Streamlit-powered Command Matrix frontend.
+## 📂 Project Structure & File Descriptions
+
+| File | Description |
+| :--- | :--- |
+| **`anpr_colab.py`** | The primary AI pipeline that handles vehicle detection, ByteTrack tracking, PaddleOCR plate reading, and API communication. |
+| **`plate_rules.py`** | Contains specialized domain logic to validate and auto-correct Indian license plate OCR reads using character-mapping and regex. |
+| **`main.py`** | The FastAPI entry point that initializes the database, mounts static assets, and hosts the API router. |
+| **`routes.py`** | The central API router that consolidates all endpoints for detections, analytics, and manual logging. |
+| **`db.py`** | Manages the SQLAlchemy database engine, session factory, and SQLite connection configuration. |
+| **`models.py`** | Defines the database schema for detection logs using SQLAlchemy ORM. |
+| **`crud.py`** | Handles all database operations including searching plates, creating detection logs, and calculating dashboard statistics. |
+| **`dashboard.py`** | The Streamlit-powered Security Operations Center (SOC) dashboard that visualizes live traffic telemetry and detection logs. |
+| **`config.py`** | A centralized configuration file managing file paths, API URLs, and hardware device settings. |
 
 ## 🖥️ Hardware Requirements
 This system performs real-time multi-model inference (YOLO + PaddleOCR). To achieve smooth performance:
@@ -28,7 +35,31 @@ This system performs real-time multi-model inference (YOLO + PaddleOCR). To achi
 
 ## 🚀 Getting Started
 
-### 2. Install Dependencies
-Ensure you have Python installed, then install the required libraries:
+### 1. Installation
+Clone the repository and install all required dependencies listed in `requirements.txt`:
 ```bash
-pip install fastapi uvicorn streamlit sqlalchemy ultralytics paddleocr opencv-python pandas requests
+git clone [https://github.com/bhavyabundela06/Indian-ANPR-ByteTrack-FastAPI.git](https://github.com/bhavyabundela06/Indian-ANPR-ByteTrack-FastAPI.git)
+cd Indian-ANPR-ByteTrack-FastAPI
+pip install -r requirements.txt
+
+### 2. Configure Your Environment
+•	Download your custom plate detection model and place it in the models/ folder as best.pt.
+•	Ensure yolov8n.pt is also present in the models/ folder.
+•	Place your test video in the videos/ folder.
+
+### 3. Run the System
+1.	Backend: uvicorn main:app --reload
+2.	AI Pipeline: python anpr_colab.py
+3.	Dashboard: streamlit run dashboard.py
+
+## 📊 Dataset & Training
+The object detection models utilized in this pipeline were trained and evaluated using high-quality Indian traffic data sourced from Kaggle.
+•	Dataset Link: [Insert your Kaggle dataset link here]
+
+***
+
+**You are now ready for the final step:**
+1. Save the file in VS Code.
+2. Run `git add .` in your terminal.
+3. Run `git commit -m "Finalize README with file descriptions and install instructions"`.
+4. Run `git push -u origin main`.
