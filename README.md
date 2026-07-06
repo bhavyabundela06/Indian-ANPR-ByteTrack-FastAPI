@@ -42,24 +42,20 @@ git clone [https://github.com/bhavyabundela06/Indian-ANPR-ByteTrack-FastAPI.git]
 cd Indian-ANPR-ByteTrack-FastAPI
 pip install -r requirements.txt
 
-### 2. Configure Your Environment
+*Configure Your Environment
 •	Download your custom plate detection model and place it in the models/ folder as best.pt.
 •	Ensure yolov8n.pt is also present in the models/ folder.
 •	Place your test video in the videos/ folder.
 
-### 3. Run the System
+*Run the System
 1.	Backend: uvicorn main:app --reload
 2.	AI Pipeline: python anpr_colab.py
 3.	Dashboard: streamlit run dashboard.py
 
-## 📊 Dataset & Training
+📊 Dataset & Training
 The object detection models utilized in this pipeline were trained and evaluated using high-quality Indian traffic data sourced from Kaggle.
 •	Dataset Link: [Insert your Kaggle dataset link here]
 
 ***
 
-**You are now ready for the final step:**
-1. Save the file in VS Code.
-2. Run `git add .` in your terminal.
-3. Run `git commit -m "Finalize README with file descriptions and install instructions"`.
-4. Run `git push -u origin main`.
+
