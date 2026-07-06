@@ -57,6 +57,30 @@ loop. If you need real throughput, the detection loop and the network I/O
 should run on separate threads/processes with a queue between them — that
 refactor hasn't been done yet.
 
+## How FastAPI and Streamlit talk to each other
+
+They're not integrated in a tight sense — no shared imports, no direct
+function calls. They're two separate processes that only communicate over
+plain HTTP, the same way a browser or `curl` would:
+
+- FastAPI (`main.py` + `routes.py`) runs on `localhost:8000` and exposes
+  REST endpoints — `GET /api/v1/detections`, `POST /api/v1/detections/add`,
+  etc.
+- Streamlit (`dashboard.py`) runs on its own port. Every time it needs
+  data it calls `requests.get("http://localhost:8000/api/v1/detections")`,
+  parses the JSON into a pandas DataFrame, and renders it as an HTML table.
+- Every 30 seconds, the dashboard calls `st.rerun()`, which re-executes the
+  whole script top to bottom and hits the API fresh. That's what makes the
+  table look "live" — it's **polling**, not a persistent connection. No
+  websockets, no server push.
+- `anpr_colab.py` never talks to Streamlit directly. It only POSTs
+  confirmed plate reads to FastAPI's `/detections/add`, which writes to
+  SQLite. Streamlit just reads whatever's in that database via the API.
+
+Mental model: **FastAPI is the only thing that touches the database.
+Streamlit is a thin client that polls FastAPI over REST, same as any other
+API consumer** — just using Python's `requests` instead of `fetch`.
+
 ## Project structure
 
 ```
@@ -70,6 +94,21 @@ models.py         — DetectionLog table definition
 db.py             — engine/session setup
 dashboard.py      — Streamlit live dashboard + manual entry form
 ```
+
+## Hardware requirements
+
+This runs two YOLOv8 models plus PaddleOCR per relevant frame — it needs a
+GPU to keep up with a live stream. Tested on:
+
+- **Google Colab** (works out of the box on a Colab GPU runtime), or
+- **Any NVIDIA GPU with 16–32GB+ VRAM** for local/on-prem deployment
+
+CPU-only will run but will fall badly behind a real-time RTSP feed —
+expect it to work for testing against a short pre-recorded clip, not for
+live camera use. `DEVICE` in `anpr_colab.py` controls which GPU index is
+used (set it to `"cpu"` if you don't have CUDA available).
+
+
 
 ## Setup
 
@@ -117,6 +156,21 @@ Optional: set a real database instead of the default local SQLite file:
 # .env
 DATABASE_URL=postgresql://user:pass@host:5432/dbname
 ```
+## Demo
+
+There's no permanently hosted demo — everything currently runs as three
+local processes (see [Running it](#running-it)). To get a shareable link
+for a quick walkthrough:
+
+```bash
+# after starting uvicorn and streamlit locally
+ngrok http 8501        # tunnels the Streamlit dashboard
+ngrok http 8000        # optional: tunnels the API directly
+```
+
+That gives you a temporary public URL good for a demo call; it's not
+meant to stay up (see [Limitations](#limitations) — no auth on the API).
+A recorded walkthrough / screen capture may be added here later.
 
 ## Running it
 
