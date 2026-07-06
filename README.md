@@ -9,6 +9,22 @@ live dashboard to watch it happen.
 This is a working prototype, not a hardened production system. See
 [Limitations](#limitations) below for what that means concretely.
 
+## Demo
+
+There's no permanently hosted demo — everything currently runs as three
+local processes (see [Running it](#running-it)). To get a shareable link
+for a quick walkthrough:
+
+```bash
+# after starting uvicorn and streamlit locally
+ngrok http 8501        # tunnels the Streamlit dashboard
+ngrok http 8000        # optional: tunnels the API directly
+```
+
+That gives you a temporary public URL good for a demo call; it's not
+meant to stay up (see [Limitations](#limitations) — no auth on the API).
+A recorded walkthrough / screen capture may be added here later.
+
 ## Why Indian plates need special handling
 
 Most open-source ANPR projects assume clean, high-contrast Western plates.
@@ -108,7 +124,24 @@ expect it to work for testing against a short pre-recorded clip, not for
 live camera use. `DEVICE` in `anpr_colab.py` controls which GPU index is
 used (set it to `"cpu"` if you don't have CUDA available).
 
+## Dataset & Training
 
+The plate-detection model (`best.pt`) was trained on the
+[License Plate Recognition dataset](https://universe.roboflow.com/roboflow-universe-projects/license-plate-recognition-rxg4e/dataset/4)
+(v4, `resized640_aug3x-ACCURATE`) from Roboflow Universe, by Roboflow
+Universe Projects, licensed CC BY 4.0.
+
+- **24,242 images total** (21,174 train / 2,048 valid / 1,020 test — an
+  87/8/4 split), single class: license plate, object detection format
+- **Preprocessing:** auto-orient, resized to 640×640
+- **Augmentation (3x per source image):** horizontal flip, up to 15% zoom
+  crop, ±10° rotation, ±2° shear, 10% grayscale, ±15% hue/saturation/
+  brightness/exposure jitter, slight blur, cutout
+- Available in YOLOv5/v7/v8/v9/v11/v12 TXT+YAML, COCO JSON, Pascal VOC,
+  TFRecord, and other formats directly from the link above
+
+*(Add your own fine-tuning details here once finalized — base checkpoint,
+epochs, batch size, resulting mAP — so the training run is reproducible.)*
 
 ## Setup
 
@@ -116,61 +149,35 @@ used (set it to `"cpu"` if you don't have CUDA available).
 pip install -r requirements.txt
 ```
 
-<<<<<<< HEAD
-*Configure Your Environment
-•	Download your custom plate detection model and place it in the models/ folder as best.pt.
-•	Ensure yolov8n.pt is also present in the models/ folder.
-•	Place your test video in the videos/ folder.
-
-*Run the System
-1.	Backend: uvicorn main:app --reload
-2.	AI Pipeline: python anpr_colab.py
-3.	Dashboard: streamlit run dashboard.py
-
-📊 Dataset & Training
-The object detection models utilized in this pipeline were trained and evaluated using high-quality Indian traffic data sourced from Kaggle.
-•	Dataset Link: [Insert your Kaggle dataset link here]
-=======
-You need two model weight files in the project root:
+You need two model weight files:
 - `yolov8n.pt` — auto-downloads on first run via ultralytics
-- `best.pt` — your own trained plate-detection model (not included; train
-  or source this yourself)
+- `best.pt` — your own trained plate-detection model (not included; see
+  [Dataset & Training](#dataset--training) above)
+
+⚠️ **Check this against your current code before following it:** as of the
+last code review, `anpr_colab.py` loads both as bare filenames from the
+project root (`YOLO("best.pt")`, `YOLO("yolov8n.pt")`) — not from a
+`models/` subfolder. If you've since reorganized into `models/best.pt` and
+`models/yolov8n.pt`, update the `PLATE_MODEL` / `VEHICLE_MODEL` constants
+in `anpr_colab.py` to match, or keep the weight files in the project root
+to match what's here.
 
 Set your camera/stream source in `config.py`:
 
 ```python
 RTSP_URL = "rtsp://<user>:<pass>@<camera-ip>:554/<stream-path>"
 ```
->>>>>>> d37dc33 (Modified README.md)
 
 ⚠️ Don't commit real camera credentials. Move `RTSP_URL` to an environment
 variable or `.env` file before pushing config changes — the current
 `config.py` has a placeholder for this reason.
 
-<<<<<<< HEAD
-
-=======
 Optional: set a real database instead of the default local SQLite file:
 
 ```bash
 # .env
 DATABASE_URL=postgresql://user:pass@host:5432/dbname
 ```
-## Demo
-
-There's no permanently hosted demo — everything currently runs as three
-local processes (see [Running it](#running-it)). To get a shareable link
-for a quick walkthrough:
-
-```bash
-# after starting uvicorn and streamlit locally
-ngrok http 8501        # tunnels the Streamlit dashboard
-ngrok http 8000        # optional: tunnels the API directly
-```
-
-That gives you a temporary public URL good for a demo call; it's not
-meant to stay up (see [Limitations](#limitations) — no auth on the API).
-A recorded walkthrough / screen capture may be added here later.
 
 ## Running it
 
@@ -180,11 +187,11 @@ Three separate processes:
 # 1. Backend API (creates tables on first run, serves evidence images at /static)
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
-# 2. Dashboard
-streamlit run dashboard.py
-
-# 3. AI pipeline (reads from RTSP_URL in config.py, POSTs confirmed plates)
+# 2. AI pipeline (reads from RTSP_URL in config.py, POSTs confirmed plates)
 python anpr_colab.py
+
+# 3. Dashboard
+streamlit run dashboard.py
 ```
 
 ## API
@@ -222,4 +229,4 @@ Being upfront about what this is *not*, so nobody's surprised:
 - [ ] Add API key auth on the ingest endpoint
 - [ ] Unit tests for `plate_rules.py`
 - [ ] Swap default SQLite for Postgres in the docker-compose setup
->>>>>>> d37dc33 (Modified README.md)
+- [ ] Fill in fine-tuning details (base checkpoint, epochs, mAP) in Dataset & Training
