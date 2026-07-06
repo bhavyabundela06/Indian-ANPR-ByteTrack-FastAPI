@@ -1,47 +1,83 @@
-# Indian-ANPR-ByteTrack-FastAPI 🛡️
+# Indian ANPR — YOLOv8 + ByteTrack + FastAPI
 
-An end-to-end, real-time Automatic Number Plate Recognition (ANPR) system engineered specifically for Indian traffic domain rules. 
+A license plate recognition pipeline built specifically for **Indian plates**, not
+adapted from a US/EU template. Detects vehicles, tracks them across frames,
+reads the plate, and corrects OCR misreads using the actual structure of an
+Indian registration plate — then logs confirmed reads to a database with a
+live dashboard to watch it happen.
 
-Most open-source ANPR scripts freeze or drop frames when processing heavy OCR tasks. This project solves that by utilizing a completely decoupled, multithreaded architecture. The video display, YOLO detection, PaddleOCR processing, and database logging all run asynchronously, ensuring smooth performance even on local hardware. 
+This is a working prototype, not a hardened production system. See
+[Limitations](#limitations) below for what that means concretely.
 
-Coupled with a FastAPI backend and a Streamlit Security Operations Center (SOC) dashboard, this system goes beyond a simple Python script to deliver a full-stack traffic enforcement solution.
+## Why Indian plates need special handling
 
-## ⚡ Key Features
-* **Real-Time Tracking:** Utilizes YOLOv8 and ByteTrack to lock onto cars, bikes, buses, and trucks across multiple frames without losing the subject.
-* **Domain-Aware OCR:** Implements custom regex and character-mapping rules specific to the Indian format (`SS DD L NNNN`). It automatically corrects common AI hallucinations (e.g., confusing `O` with `0` in a digit-only slot).
-* **Decoupled Architecture:** The display loop never blocks on heavy OCR processing, allowing the video stream to maintain high FPS.
-* **Full-Stack Integration:** Includes a FastAPI backend router and a lightweight SQLite database to log detections, confidence scores, and timestamps.
-* **Command Matrix Dashboard:** A sleek, live-updating Streamlit SOC interface to monitor traffic telemetry and view evidence crops in real-time.
+Most open-source ANPR projects assume clean, high-contrast Western plates.
+Indian plates follow a specific grammar — `SS DD L(1-3) NNNN`
+(state code, RTO district code, 1–3 letter series, 4-digit number) — and
+OCR models routinely confuse `O/0`, `S/5`, `I/1`, `B/8` in the wrong
+positions. Rather than trusting the raw OCR output, `plate_rules.py`:
 
-## 📂 Project Structure & File Descriptions
+- Validates a read against the real list of Indian state/UT codes
+- Rejects structurally impossible reads (letters where digits must be, etc.)
+- Auto-corrects near-misses by rebuilding the plate position-by-position
+  (state → letters, district → digits, series → letters, number → digits)
+  and re-validating
 
-| File | Description |
-| :--- | :--- |
-| **`anpr_colab.py`** | The primary AI pipeline that handles vehicle detection, ByteTrack tracking, PaddleOCR plate reading, and API communication. |
-| **`plate_rules.py`** | Contains specialized domain logic to validate and auto-correct Indian license plate OCR reads using character-mapping and regex. |
-| **`main.py`** | The FastAPI entry point that initializes the database, mounts static assets, and hosts the API router. |
-| **`routes.py`** | The central API router that consolidates all endpoints for detections, analytics, and manual logging. |
-| **`db.py`** | Manages the SQLAlchemy database engine, session factory, and SQLite connection configuration. |
-| **`models.py`** | Defines the database schema for detection logs using SQLAlchemy ORM. |
-| **`crud.py`** | Handles all database operations including searching plates, creating detection logs, and calculating dashboard statistics. |
-| **`dashboard.py`** | The Streamlit-powered Security Operations Center (SOC) dashboard that visualizes live traffic telemetry and detection logs. |
-| **`config.py`** | A centralized configuration file managing file paths, API URLs, and hardware device settings. |
+It can't decide between two equally *valid* reads (e.g. `MH03DY5705` vs
+`MH03DZ5705`) — that's handled separately by a voting step, not by rules.
 
-## 🖥️ Hardware Requirements
-This system performs real-time multi-model inference (YOLO + PaddleOCR). To achieve smooth performance:
-* **Recommended:** 16/32GB+ RAM and a dedicated NVIDIA GPU (CUDA enabled).
-* **Alternative:** If running on a local CPU, the processing speed will decrease significantly.
-* **Cloud Option:** Highly recommended to run on [Google Colab](https://colab.research.google.com/) or similar cloud environments with T4/L4 GPU acceleration.
+## How it works
 
-## 🚀 Getting Started
+```
+RTSP / video feed
+     │
+     ▼
+YOLOv8 (vehicle detection) + ByteTrack (persistent vehicle IDs)
+     │
+     ▼
+YOLOv8 (plate detection) on the same frame
+     │
+     ▼
+PaddleOCR on the plate crop → plate_rules.py correction
+     │
+     ▼
+Per-vehicle-ID vote counter (needs N matching reads before it's trusted)
+     │
+     ▼
+POST /api/v1/detections/add  →  FastAPI  →  SQLite
+     │
+     ▼
+Streamlit dashboard (polls the API, shows live detections + evidence crops)
+```
 
-### 1. Installation
-Clone the repository and install all required dependencies listed in `requirements.txt`:
+**This loop is single-threaded and synchronous.** Detection, OCR, and the
+API call all happen in sequence on one thread per frame. It's simple and
+easy to reason about, but a slow or unreachable API will stall the frame
+loop. If you need real throughput, the detection loop and the network I/O
+should run on separate threads/processes with a queue between them — that
+refactor hasn't been done yet.
+
+## Project structure
+
+```
+anpr_colab.py     — detection + tracking + OCR + voting, POSTs to the API
+plate_rules.py    — Indian plate validation/correction (pure logic, no I/O)
+config.py         — RTSP URL, camera location, API base URL
+main.py           — FastAPI app: CORS, static file mount, table creation
+routes.py         — API endpoints
+crud.py           — SQLAlchemy queries
+models.py         — DetectionLog table definition
+db.py             — engine/session setup
+dashboard.py      — Streamlit live dashboard + manual entry form
+```
+
+## Setup
+
 ```bash
-git clone [https://github.com/bhavyabundela06/Indian-ANPR-ByteTrack-FastAPI.git](https://github.com/bhavyabundela06/Indian-ANPR-ByteTrack-FastAPI.git)
-cd Indian-ANPR-ByteTrack-FastAPI
 pip install -r requirements.txt
+```
 
+<<<<<<< HEAD
 *Configure Your Environment
 •	Download your custom plate detection model and place it in the models/ folder as best.pt.
 •	Ensure yolov8n.pt is also present in the models/ folder.
@@ -55,7 +91,81 @@ pip install -r requirements.txt
 📊 Dataset & Training
 The object detection models utilized in this pipeline were trained and evaluated using high-quality Indian traffic data sourced from Kaggle.
 •	Dataset Link: [Insert your Kaggle dataset link here]
+=======
+You need two model weight files in the project root:
+- `yolov8n.pt` — auto-downloads on first run via ultralytics
+- `best.pt` — your own trained plate-detection model (not included; train
+  or source this yourself)
 
-***
+Set your camera/stream source in `config.py`:
 
+```python
+RTSP_URL = "rtsp://<user>:<pass>@<camera-ip>:554/<stream-path>"
+```
+>>>>>>> d37dc33 (Modified README.md)
 
+⚠️ Don't commit real camera credentials. Move `RTSP_URL` to an environment
+variable or `.env` file before pushing config changes — the current
+`config.py` has a placeholder for this reason.
+
+<<<<<<< HEAD
+
+=======
+Optional: set a real database instead of the default local SQLite file:
+
+```bash
+# .env
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+```
+
+## Running it
+
+Three separate processes:
+
+```bash
+# 1. Backend API (creates tables on first run, serves evidence images at /static)
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# 2. Dashboard
+streamlit run dashboard.py
+
+# 3. AI pipeline (reads from RTSP_URL in config.py, POSTs confirmed plates)
+python anpr_colab.py
+```
+
+## API
+
+| Method | Endpoint                     | Purpose                              |
+|--------|-------------------------------|---------------------------------------|
+| GET    | `/api/v1/detections`          | List recent detections                |
+| GET    | `/api/v1/detections/{id}`     | Get one detection by ID               |
+| GET    | `/api/v1/detections/search?q=`| Partial plate search                  |
+| POST   | `/api/v1/detections/add`      | Ingest a new detection (used by the AI pipeline) |
+| GET    | `/api/v1/analytics`           | Total/today counts, vehicle breakdown |
+
+None of these endpoints require authentication — see Limitations.
+
+## Limitations
+
+Being upfront about what this is *not*, so nobody's surprised:
+
+- **No authentication on any endpoint.** `/detections/add` will accept a
+  POST from anyone who can reach it. Fine on `localhost`; not fine exposed
+  over ngrok or the public internet as-is.
+- **Single-threaded pipeline.** See the architecture note above — no
+  async/queue decoupling between capture, inference, and the network call.
+- **SQLite by default.** Works for a single-camera prototype; not meant
+  for concurrent writers or high query volume.
+- **No automated tests.** `plate_rules.py` in particular is pure logic
+  with no I/O and would be easy to unit-test — that's the first thing
+  worth adding.
+- **Camera credentials belong in environment variables**, not committed
+  config files.
+
+## Roadmap
+
+- [ ] Move capture/inference/API-call onto separate threads with a queue
+- [ ] Add API key auth on the ingest endpoint
+- [ ] Unit tests for `plate_rules.py`
+- [ ] Swap default SQLite for Postgres in the docker-compose setup
+>>>>>>> d37dc33 (Modified README.md)
