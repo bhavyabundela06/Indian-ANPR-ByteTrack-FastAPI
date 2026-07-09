@@ -1,22 +1,11 @@
 """
 main.py — FastAPI application entry point.
-
-FIXED: The old main.py was just a second copy of the router in routes.py —
-there was no FastAPI() app anywhere, so `uvicorn main:app` would have failed
-with "Attribute 'app' not found". This file now:
-  1. Creates the FastAPI app
-  2. Creates the database tables on startup
-  3. Mounts /static so plate crop images (evidence) are served over HTTP
-  4. Includes the single consolidated router from routes.py
-  5. Enables CORS so the Streamlit dashboard can call the API
-
-Run with:
-    uvicorn main:app --reload --host 0.0.0.0 --port 8000
 """
 
 import os
+import shutil
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -24,7 +13,7 @@ import models
 from db import engine
 from routes import router
 
-# Create tables if they don't exist yet (was never done anywhere before)
+# Create tables if they don't exist yet
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -42,10 +31,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve evidence crops: anpr_colab.py writes static/crops/<PLATE>.jpg and the
-# dashboard links to {API_BASE_URL}/static/crops/<PLATE>.jpg
+# Serve evidence crops over HTTP
 os.makedirs("static/crops", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# --- NEW: Endpoint to receive physical image uploads from Colab ---
+@app.post("/api/v1/upload-evidence")
+async def upload_evidence(file: UploadFile = File(...)):
+    # ... (rest of the code)
+    """Receives the image file from Colab and saves it physically to the Mac."""
+    file_path = f"static/crops/{file.filename}"
+    
+    # Save the physical file to your Mac's hard drive
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # Return the local path so Colab can attach it to the database entry
+    return {"evidence_url": f"/{file_path}"}
+
 
 app.include_router(router)
 

@@ -15,8 +15,11 @@ yolov8n.pt
 # Prevents uploading local snapshots and video clips
 evidence/
 static/
+videos/
+output.mp4
 *.mp4
 *.avi
+*.mov
 
 # 4. ARCHIVES
 aegis-vision.zip

@@ -1,23 +1,19 @@
 """
 routes.py — the single, consolidated API router.
-
-FIXED: main.py and routes.py previously defined two nearly identical routers
-with the same prefix and overlapping endpoints. All endpoints now live here;
-main.py just includes this router. Also added the endpoints that existed only
-in one of the two files (analytics) plus search / get-by-id which crud.py
-already supported but were never exposed.
 """
-
+import os
+import shutil
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 import crud
 from db import get_db
 
+# The router automatically applies /api/v1 to everything below it
 router = APIRouter(prefix="/api/v1", tags=["ANPR Core Router Engine"])
 
 
@@ -48,6 +44,20 @@ class DetectionOut(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+@router.post("/upload-evidence")
+async def upload_evidence(file: UploadFile = File(...)):
+    """Receives the image file from Colab and saves it physically to the local machine."""
+    os.makedirs("static/crops", exist_ok=True)
+    file_path = f"static/crops/{file.filename}"
+    
+    # Save the physical file to your local hard drive
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # Return the local path so Colab can attach it to the database entry
+    return {"evidence_url": f"/{file_path}"}
+
+
 @router.get("/detections", response_model=List[DetectionOut])
 def get_live_detections(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Fetches real logs from the database for the dashboard."""
