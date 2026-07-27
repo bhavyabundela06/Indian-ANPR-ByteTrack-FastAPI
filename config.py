@@ -27,4 +27,5 @@ PLATE_MODEL = os.path.join(MODELS_DIR, "best.pt")
 VEHICLE_MODEL = os.path.join(MODELS_DIR, "yolov8n.pt")
 
 # --- API SETTINGS ---
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+# API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+API_BASE_URL = " "
