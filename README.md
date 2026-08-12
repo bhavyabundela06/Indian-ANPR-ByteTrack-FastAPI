@@ -222,6 +222,21 @@ streamlit run dashboard.py
 
 None of these endpoints require authentication — see [Limitations](#limitations).
 
+
+## Troubleshooting
+
+**Segmentation Fault when running Streamlit (macOS / Apple Silicon)**
+If you encounter a `zsh: segmentation fault streamlit run dashboard.py` error on a Mac, it is typically caused by a memory conflict with `pyarrow` or the UI threads in `opencv`. 
+
+To fix this, run the following commands in your environment:
+
+1. Ensure you are using the headless version of OpenCV:
+   ```bash
+   pip uninstall opencv-python -y
+   pip install opencv-python-headless
+
+
+
 ## Known gaps / bugs
 
 Things that are half-wired and worth cleaning up:

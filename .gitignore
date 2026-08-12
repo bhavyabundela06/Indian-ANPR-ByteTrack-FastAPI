@@ -30,4 +30,7 @@ aegis-vision.zip
 __pycache__/
 *.pyc
 .DS_Store
+
+# 6. ENVIRONMENT VARIABLES & NOTEBOOKS
 .env
+colab.ipynb

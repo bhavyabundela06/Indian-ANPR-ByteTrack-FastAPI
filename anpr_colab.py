@@ -295,8 +295,6 @@
 #     main()
 
 
-
-
 """
 anpr_colab.py — AI pipeline: detect vehicles + plates, OCR, vote, POST to backend.
 
@@ -355,7 +353,8 @@ BOX_COLOR_VEHICLE = (0, 255, 0)      # green
 BOX_COLOR_PLATE = (0, 220, 255)      # yellow
 BOX_COLOR_CONFIRMED = (255, 120, 0)  # blue-ish, marks a confirmed plate
 
-_ocr = PaddleOCR(lang="en")
+_ocr = PaddleOCR(lang="en", enable_mkldnn=False)
+
 
 
 def preprocess(crop):
